@@ -8,7 +8,7 @@ using Xunit.Abstractions;
 
 namespace ClusterPack.Tests
 {
-    public class JoinTests : AbstractSpec
+    public class JoinTests : TestBase
     {
         private readonly ITestOutputHelper output;
         private readonly Node n1;

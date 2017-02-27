@@ -44,20 +44,20 @@ namespace ClusterPack
         /// Event triggered once a current node acknowledges, that a new member 
         /// joined the cluster.
         /// </summary>
-        public ClusterEventHandler<MemberJoined> OnJoined;
+        public AsyncEventHandler<MemberJoined> OnJoined;
 
         /// <summary>
         /// Event triggered once a current node acknowledges, that an existing
         ///  member has left the cluster.
         /// </summary>
-        public ClusterEventHandler<MemberLeft> OnLeft;
+        public AsyncEventHandler<MemberLeft> OnLeft;
 
         /// <summary>
         /// Event triggered once a current node receives a message emitted using
         /// either <see cref="Send"/> or <see cref="Broadcast"/>. It's possible 
         /// that node will receive a message send by itself.
         /// </summary>
-        public ClusterEventHandler<IncomingMessage> OnMessage;
+        public AsyncEventHandler<IncomingMessage> OnMessage;
 
         public Node(string name, string host = "localhost", ushort port = 0)
             : this(new ClusterSettings(name: name, host: host, port: port)) { }

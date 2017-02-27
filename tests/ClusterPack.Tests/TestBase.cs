@@ -4,14 +4,14 @@ using ClusterPack.Transport;
 
 namespace ClusterPack.Tests
 {
-    public class AbstractSpec : IDisposable
+    public class TestBase : IDisposable
     {
         protected readonly InProcTransport Transport;
         protected readonly VirtualTimer Timer;
 
-        public AbstractSpec()
+        public TestBase()
         {
-            this.Timer = new VirtualTimer();
+            this.Timer = new VirtualTimer(DateTime.UtcNow);
             this.Transport = new InProcTransport(this.Timer);
         }
 

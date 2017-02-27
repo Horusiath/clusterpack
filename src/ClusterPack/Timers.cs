@@ -12,6 +12,35 @@ namespace ClusterPack
     {
         void After(TimeSpan delay, Action action);
         void Every(TimeSpan delay, TimeSpan interval, Action action);
+        event EventHandler<TimerFailure> OnError;
+    }
+
+    /// <summary>
+    /// Container with all informations about failing scheduled calls.
+    /// </summary>
+    public sealed class TimerFailure
+    {
+        /// <summary>
+        /// Date provided by calling timer, at which a call has failed.
+        /// </summary>
+        public DateTime CallTime { get; }
+
+        /// <summary>
+        /// An exception that caused a failure.
+        /// </summary>
+        public Exception Cause { get; }
+        
+        /// <summary>
+        /// An action, which failed to execute.
+        /// </summary>
+        public Action Callback { get; }
+
+        public TimerFailure(DateTime callTime, Exception cause, Action callback)
+        {
+            CallTime = callTime;
+            Cause = cause;
+            Callback = callback;
+        }
     }
 
     internal struct TimerCall : IComparable<TimerCall>
@@ -48,6 +77,8 @@ namespace ClusterPack
 
     public abstract class AbstractTimer : ITimer
     {
+        public event EventHandler<TimerFailure> OnError; 
+
         private bool disposed = false;
         private object syncLock = new object();
         private readonly SortedSet<TimerCall> calls = new SortedSet<TimerCall>();
@@ -104,7 +135,15 @@ namespace ClusterPack
             
             foreach (var call in toCall)
             {
-                call.Call();
+                try
+                {
+                    call.Call();
+                }
+                catch (Exception cause)
+                {
+                    var failure = new TimerFailure(now, cause, call.Call);
+                    this.OnError?.Invoke(this, failure);
+                }
             }
         }
     }
@@ -147,6 +186,11 @@ namespace ClusterPack
                 this.Callback(value);
                 this.currentTime = value;
             }
+        }
+        
+        public VirtualTimer(DateTime initialTime)
+        {
+            this.currentTime = initialTime;
         }
 
         protected override void SafeDispose()

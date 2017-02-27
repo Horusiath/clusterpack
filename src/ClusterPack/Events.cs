@@ -2,7 +2,7 @@
 
 namespace ClusterPack
 {
-    public delegate Task ClusterEventHandler<in T>(T e);
+    public delegate Task AsyncEventHandler<in T>(T e);
 
     public class MemberStateChanged
     {
