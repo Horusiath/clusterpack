@@ -10,8 +10,8 @@ namespace ClusterPack
     /// </summary>
     public interface ITimer : IDisposable
     {
-        void After(TimeSpan delay, Action action);
-        void Every(TimeSpan delay, TimeSpan interval, Action action);
+        IDisposable After(TimeSpan delay, Action action);
+        IDisposable Every(TimeSpan delay, TimeSpan interval, Action action);
         event EventHandler<TimerFailure> OnError;
     }
 
@@ -50,7 +50,7 @@ namespace ClusterPack
 
         public Action Call { get; }
         public TimeSpan? Interval { get; }
-        public DateTime NextCallDate { get; }
+        public DateTime NextCallDate { get; set; }
 
         public TimerCall(Action call, DateTime nextCallDate, TimeSpan? interval = null)
         {
@@ -59,15 +59,14 @@ namespace ClusterPack
             Interval = interval;
         }
 
-        public bool TryAdvance(out TimerCall next)
+        public bool TryAdvance()
         {
             if (!Interval.HasValue)
             {
-                next = Min;
                 return false;
             }
-            
-            next = new TimerCall(Call, NextCallDate + Interval.Value, Interval);
+
+            NextCallDate += Interval.Value;
             return true;
         }
 
@@ -77,6 +76,35 @@ namespace ClusterPack
 
     public abstract class AbstractTimer : ITimer
     {
+        #region disposer
+
+        private sealed class TimerDisposer : IDisposable
+        {
+            private readonly AbstractTimer timer;
+            private readonly TimerCall call;
+            private bool disposed = false;
+
+            public TimerDisposer(AbstractTimer timer, TimerCall call)
+            {
+                this.timer = timer;
+                this.call = call;
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    lock (timer.syncLock)
+                    {
+                        timer.calls.Remove(this.call);
+                    }
+                    disposed = true;
+                }
+            }
+        }
+
+        #endregion
+
         public event EventHandler<TimerFailure> OnError; 
 
         private bool disposed = false;
@@ -95,13 +123,13 @@ namespace ClusterPack
             }
         }
 
-        public void After(TimeSpan delay, Action action) => 
+        public IDisposable After(TimeSpan delay, Action action) => 
             Schedule(action, delay);
 
-        public void Every(TimeSpan delay, TimeSpan interval, Action action) => 
+        public IDisposable Every(TimeSpan delay, TimeSpan interval, Action action) => 
             Schedule(action, delay, interval);
 
-        private void Schedule(Action action, TimeSpan delay, TimeSpan? interval = null)
+        private IDisposable Schedule(Action action, TimeSpan delay, TimeSpan? interval = null)
         {
             if (disposed) throw new ObjectDisposedException("Timer has been disposed");
 
@@ -110,6 +138,8 @@ namespace ClusterPack
             {
                 this.calls.Add(timerCall);
             }
+            
+            return new TimerDisposer(this, timerCall);
         }
 
         protected void Callback(DateTime now)
@@ -126,9 +156,9 @@ namespace ClusterPack
                 this.calls.ExceptWith(toCall);
                 foreach (var call in toCall)
                 {
-                    if (call.TryAdvance(out var nextCall))
+                    if (call.TryAdvance())
                     {
-                        this.calls.Add(nextCall);
+                        this.calls.Add(call);
                     }
                 }
             }

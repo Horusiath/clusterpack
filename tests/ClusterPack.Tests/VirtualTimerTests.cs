@@ -72,5 +72,29 @@ namespace ClusterPack.Tests
             called.Should().Be(true, "scheduled action failures should not infect other scheduled actions");
             failure.Should().Be(true, "scheduled action failures should trigger OnError event");
         }
+
+        [Fact]
+        public void VirtualTimer_should_allow_to_dispose_scheduled_action()
+        {
+            var called = false;
+            var cancel = timer.After(TimeSpan.FromMilliseconds(400), () => called = true);
+            cancel.Dispose();
+            timer.Current += TimeSpan.FromMilliseconds(600);
+            called.Should().Be(false, "scheduled action, when cancelled, should not be called");
+        }
+
+        [Fact]
+        public void VirtualTimer_should_allow_to_dispose_repetitive_scheduled_action()
+        {
+            var called = new List<int>();
+            var i = 0;
+            var interval = TimeSpan.FromMilliseconds(400);
+            var cancel = timer.Every(interval, interval, () => called.Add((++i)));
+            timer.Current += TimeSpan.FromMilliseconds(600);
+            cancel.Dispose();
+            called.Should().BeEquivalentTo(1, "scheduled action should be called before disposed");
+            timer.Current += TimeSpan.FromMilliseconds(600);
+            called.Should().BeEquivalentTo(1, "scheduled action should not be called after disposed");
+        }
     }
 }

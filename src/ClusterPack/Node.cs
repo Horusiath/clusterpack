@@ -24,6 +24,8 @@ namespace ClusterPack
         private readonly ConcurrentDictionary<string, MemberInfo> members;
         private readonly object syncLock = new object();
 
+        private bool disposing = false;
+
         /// <summary>
         /// A list of all known cluster members, no matter in what state 
         /// they are.
@@ -44,13 +46,13 @@ namespace ClusterPack
         /// Event triggered once a current node acknowledges, that a new member 
         /// joined the cluster.
         /// </summary>
-        public AsyncEventHandler<MemberJoined> OnJoined;
+        public event AsyncEventHandler<MemberJoined> OnJoined;
 
         /// <summary>
         /// Event triggered once a current node acknowledges, that an existing
         ///  member has left the cluster.
         /// </summary>
-        public AsyncEventHandler<MemberLeft> OnLeft;
+        public event AsyncEventHandler<MemberLeft> OnLeft;
 
         /// <summary>
         /// Event triggered once a current node receives a message emitted using
