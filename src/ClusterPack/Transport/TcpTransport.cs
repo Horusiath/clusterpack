@@ -68,7 +68,7 @@ namespace ClusterPack.Transport
         }
 
         /// <inheritdoc cref="ITransport"/>
-        public async IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var previous = Interlocked.CompareExchange(ref localEndpoint, endpoint, null);
             if (previous is null)
@@ -78,22 +78,27 @@ namespace ClusterPack.Transport
                 acceptorLoop = this.taskFactory.StartNew(AcceptConnections, cancellationToken);
             
                 logger.LogInformation("listening on '{0}'", endpoint);
-            
-                var reader = incommingMessages.Reader;
-                while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    while (reader.TryRead(out var message))
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            yield break;
 
-                        yield return message;
-                    }
-                }  
+                return MessageStream(cancellationToken);
             }
             else
             {
                 throw new ArgumentException($"Cannot bind {nameof(TcpTransport)} to endpoint '{endpoint}', because it's already listening at {localEndpoint}", nameof(endpoint));
+            }
+        }
+
+        private async IAsyncEnumerable<IncomingMessage> MessageStream(CancellationToken cancellationToken)
+        {
+            var reader = incommingMessages.Reader;
+            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (reader.TryRead(out var message))
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        yield break;
+
+                    yield return message;
+                }
             }
         }
 
@@ -153,7 +158,7 @@ namespace ClusterPack.Transport
                     }
                 }
 
-                connection.Start();
+                this.taskFactory.StartNew(connection.Start).ConfigureAwait(false);
                 logger.LogInformation("Received incoming connection from '{0}'", connection.Endpoint);
             }
         }

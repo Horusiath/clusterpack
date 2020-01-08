@@ -64,9 +64,10 @@ namespace ClusterPack.Transport
             }
         }
 
-        public void Start()
+        public Task Start()
         {
             Interlocked.CompareExchange(ref poolerTask, PoolMessages(default), null);
+            return poolerTask;
         }
 
         /// <summary>
