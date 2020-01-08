@@ -6,20 +6,28 @@ namespace ClusterPack.Transport
 {
     public readonly struct IncomingMessage : IDisposable
     {
-        private readonly IMemoryOwner<byte> payload;
+        private readonly IMemoryOwner<byte>? owner;
 
         public IPEndPoint Endpoint { get; }
-        public ReadOnlySequence<byte> Payload => new ReadOnlySequence<byte>(payload.Memory);
-
-        internal IncomingMessage(IPEndPoint endpoint, IMemoryOwner<byte> payload)
+        public ReadOnlySequence<byte> Payload { get; }
+    
+        internal IncomingMessage(IPEndPoint endpoint, IMemoryOwner<byte> owner)
         {
             this.Endpoint = endpoint;
-            this.payload = payload;
+            this.owner = owner;
+            this.Payload = new ReadOnlySequence<byte>(owner.Memory);
+        }
+        
+        internal IncomingMessage(IPEndPoint endpoint, ReadOnlySequence<byte> payload)
+        {
+            this.Endpoint = endpoint;
+            this.owner = null;
+            this.Payload = payload;
         }
 
         public void Dispose()
         {
-            payload.Dispose();
+            owner?.Dispose();
         }
     }
 }

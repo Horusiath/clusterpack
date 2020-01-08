@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -31,12 +32,12 @@ namespace ClusterPack.Membership
         /// Asynchronously sends a requested <paramref name="payload"/> to a given <paramref name="recipient"/>.
         /// Returned task completes after message was successfully send over the transport layer.
         /// </summary>
-        ValueTask SendAsync<T>(NodeId recipient, T payload);
+        ValueTask SendAsync(NodeId recipient, ReadOnlySequence<byte> payload);
 
         /// <summary>
         /// Asynchronously sends a requested <paramref name="payload"/> to all known active members of the cluster. 
         /// Returned task completes after message was successfully send over the transport layer to all members.
         /// </summary>
-        ValueTask BroadcastAsync<T>(T payload);
+        ValueTask BroadcastAsync(ReadOnlySequence<byte> payload);
     }
 }

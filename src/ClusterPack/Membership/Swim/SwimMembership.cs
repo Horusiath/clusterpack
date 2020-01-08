@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Net;
@@ -11,7 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClusterPack.Membership.Swim
 {
-    public class SwimMembership : IMembershipService, IAsyncDisposable
+    public sealed class SwimMembership : IMembershipService, IAsyncDisposable
     {
         private readonly ILogger logger;
         private readonly SwimMembershipOptions options;
@@ -40,17 +41,17 @@ namespace ClusterPack.Membership.Swim
 
         public async Task JoinAsync(IDiscovery discovery, CancellationToken cancellationToken)
         {
-            
+            throw new NotImplementedException();
         }
         
         /// <inheritdoc cref="IMembershipService"/>
-        public ValueTask SendAsync<T>(NodeId recipient, T payload)
+        public ValueTask SendAsync(NodeId recipient, ReadOnlySequence<byte> payload)
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc cref="IMembershipService"/>
-        public ValueTask BroadcastAsync<T>(T payload)
+        public ValueTask BroadcastAsync(ReadOnlySequence<byte> payload)
         {
             throw new NotImplementedException();
         }

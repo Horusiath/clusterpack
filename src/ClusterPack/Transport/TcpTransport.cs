@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -23,7 +24,7 @@ namespace ClusterPack.Transport
         private readonly Channel<IncomingMessage> incommingMessages;
         private readonly ConcurrentDictionary<IPEndPoint, TcpConnection> connections;
         
-        private EndPoint? listenningEndpoint;
+        private EndPoint? localEndpoint;
         private Task? acceptorLoop;
         private int isDisposed = 0;
 
@@ -43,7 +44,17 @@ namespace ClusterPack.Transport
             this.connections = new ConcurrentDictionary<IPEndPoint, TcpConnection>();
         }
 
+        /// <summary>
+        /// Returns true if current TCP transport has been disposed.
+        /// </summary>
         public bool IsDisposed => isDisposed != 0;
+        
+        /// <summary>
+        /// Returns an endpoint, at which current TCP transport is listening, ready to accept new connections.
+        /// This require to call <see cref="BindAsync"/> first, otherwise listener will not be started and
+        /// a null value will be returned. 
+        /// </summary>
+        public EndPoint? LocalEndpoint => localEndpoint;
 
         /// <inheritdoc cref="ITransport"/>
         public async ValueTask SendAsync(IPEndPoint target, ReadOnlySequence<byte> payload, CancellationToken cancellationToken)
@@ -54,6 +65,51 @@ namespace ClusterPack.Transport
             }
 
             await connection.SendAsync(payload, cancellationToken);
+        }
+
+        /// <inheritdoc cref="ITransport"/>
+        public async IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var previous = Interlocked.CompareExchange(ref localEndpoint, endpoint, null);
+            if (previous is null)
+            {
+                this.socket.Bind(endpoint);
+
+                acceptorLoop = this.taskFactory.StartNew(AcceptConnections, cancellationToken);
+            
+                logger.LogInformation("listening on '{0}'", endpoint);
+            
+                var reader = incommingMessages.Reader;
+                while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    while (reader.TryRead(out var message))
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            yield break;
+
+                        yield return message;
+                    }
+                }  
+            }
+            else
+            {
+                throw new ArgumentException($"Cannot bind {nameof(TcpTransport)} to endpoint '{endpoint}', because it's already listening at {localEndpoint}", nameof(endpoint));
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously disconnects maintained TCP connection with a given <paramref name="endpoint"/>.
+        /// Returns false if no active connection to a corresponding <paramref name="endpoint"/> was found. 
+        /// </summary>
+        public async ValueTask<bool> DisconnectAsync(IPEndPoint endpoint)
+        {
+            if (connections.TryRemove(endpoint, out var connection))
+            {
+                await connection.DisposeAsync();
+                return true;
+            }
+
+            return false;
         }
 
         private async Task<TcpConnection> AddConnection(IPEndPoint target, CancellationToken cancellationToken)
@@ -81,28 +137,6 @@ namespace ClusterPack.Transport
             logger.LogInformation("connected to '{0}'", target);
             
             return connection;
-        }
-
-        /// <inheritdoc cref="ITransport"/>
-        public async IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint)
-        {
-            if (!(Interlocked.CompareExchange(ref listenningEndpoint, endpoint, null) is null))
-                throw new ArgumentException($"Cannot connect {nameof(TcpTransport)} to endpoint {endpoint}, because it's already bound to {listenningEndpoint}", nameof(endpoint));
-            
-            this.socket.Bind(endpoint);
-
-            acceptorLoop = this.taskFactory.StartNew(AcceptConnections);
-            
-            logger.LogInformation("listening on '{0}'", endpoint);
-
-            var reader = incommingMessages.Reader;
-            while (await reader.WaitToReadAsync().ConfigureAwait(false))
-            {
-                while (reader.TryRead(out var message))
-                {
-                    yield return message;
-                }
-            }
         }
 
         private async Task AcceptConnections()

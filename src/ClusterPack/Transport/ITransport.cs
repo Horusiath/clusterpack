@@ -22,6 +22,6 @@ namespace ClusterPack.Transport
         /// Binds current transport to the given <paramref name="endpoint"/>, returning an asynchronous sequence
         /// of serialized messages send to that <paramref name="endpoint"/>.
         /// </summary>
-        IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint);
+        IAsyncEnumerable<IncomingMessage> BindAsync(EndPoint endpoint, CancellationToken cancellationToken);
     }
 }
