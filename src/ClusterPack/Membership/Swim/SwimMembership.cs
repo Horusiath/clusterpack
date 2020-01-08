@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClusterPack.Membership.Swim
 {
-    public sealed class SwimMembership : IMembershipService, IAsyncDisposable
+    public sealed class SwimMembership : IMembership, IAsyncDisposable
     {
         private readonly ILogger logger;
         private readonly SwimMembershipOptions options;
@@ -27,16 +27,16 @@ namespace ClusterPack.Membership.Swim
             this.transport = transport;
         }
 
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public Member Local { get; }
         
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public ImmutableSortedSet<Member> ActiveMembers { get; }
         
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public IAsyncEnumerable<Message> IncomingMessages { get; }
         
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public IAsyncEnumerable<MembershipEvent> MembershipEvents { get; }
 
         public async Task JoinAsync(IDiscovery discovery, CancellationToken cancellationToken)
@@ -44,19 +44,19 @@ namespace ClusterPack.Membership.Swim
             throw new NotImplementedException();
         }
         
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public ValueTask SendAsync(NodeId recipient, ReadOnlySequence<byte> payload)
         {
             throw new NotImplementedException();
         }
 
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public ValueTask BroadcastAsync(ReadOnlySequence<byte> payload)
         {
             throw new NotImplementedException();
         }
 
-        /// <inheritdoc cref="IMembershipService"/>
+        /// <inheritdoc cref="IMembership"/>
         public ValueTask DisposeAsync()
         {
             throw new NotImplementedException();

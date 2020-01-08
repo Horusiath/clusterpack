@@ -172,7 +172,7 @@ namespace ClusterPack.Transport
             {
                 await Task.WhenAll(connections.Values.Select(DisconnectAsync));
                 
-                acceptorLoop.Dispose();
+                acceptorLoop?.Dispose();
                 incommingMessages.Writer.Complete();
                 socket?.Dispose();
             }

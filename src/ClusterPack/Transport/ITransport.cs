@@ -14,7 +14,7 @@ namespace ClusterPack.Transport
     {
         /// <summary>
         /// Asynchronously sends provided <paramref name="payload"/> to a given <paramref name="destination"/>.
-        /// Completes once the whole <paramref name="payload"/> has been received and acknowledged.
+        /// Completes once the whole <paramref name="payload"/> has been received and acknowledged by remote side.
         /// </summary>
         ValueTask SendAsync(IPEndPoint destination, ReadOnlySequence<byte> payload, CancellationToken cancellationToken);
         

@@ -9,9 +9,14 @@ namespace ClusterPack
     /// </summary>
     public readonly struct NodeId : IEquatable<NodeId>, IComparable<NodeId>
     {
-        public Guid Value { get; }
+        /// <summary>
+        /// Returns new randomized <see cref="NodeId"/>.
+        /// </summary>
+        public static NodeId Create() => new NodeId(SafeRandom.NexUInt32());
+        
+        public uint Value { get; }
 
-        public NodeId(Guid value)
+        public NodeId(uint value)
         {
             Value = value;
         }

@@ -6,8 +6,8 @@ using ClusterPack.Transport;
 namespace ClusterPack
 {
     /// <summary>
-    /// Message to be send to another member. Messages can be send via <see cref="IMembershipService.SendAsync{T}"/>
-    /// or <see cref="IMembershipService.BroadcastAsync{T}"/>.
+    /// Message to be send to another member. Messages can be send via <see cref="IMembership.SendAsync{T}"/>
+    /// or <see cref="IMembership.BroadcastAsync{T}"/>.
     /// </summary>
     public readonly struct Message : IDisposable
     {

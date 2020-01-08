@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace ClusterPack.Membership
 
 {
-    public interface IMembershipService
+    public interface IMembership
     {
         /// <summary>
         /// Returns a membership info of current node.

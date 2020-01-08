@@ -61,7 +61,7 @@ namespace ClusterPack.Tests.Transport
 
             var remoteProcess = Task.Run(async () =>
             {
-                var remote = new TcpTransport(output.LoggerFor<TcpTransport>("remote"));
+                await using var remote = new TcpTransport(output.LoggerFor<TcpTransport>("remote"));
                 foreach (var message in expected)
                 {
                     var payload = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(message));
