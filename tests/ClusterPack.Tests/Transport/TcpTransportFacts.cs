@@ -17,7 +17,7 @@ namespace ClusterPack.Tests.Transport
     {
         private readonly ITestOutputHelper output;
         private readonly TcpTransport local;
-        private readonly IPEndPoint localEndpoint = new IPEndPoint(IPAddress.Loopback, 17001);
+        private readonly IPEndPoint localEndpoint = new IPEndPoint(IPAddress.IPv6Loopback, 17011);
 
         public TcpTransportFacts(ITestOutputHelper output)
         {
@@ -40,10 +40,11 @@ namespace ClusterPack.Tests.Transport
                 .Select(i => "hello " + i.ToString())
                 .ToArray();
 
+            var messages = local.BindAsync(localEndpoint, token);
+            
             // simulate two communicating nodes using two separate Tasks
             var localProcess = Task.Run(async () =>
             {
-                var messages = local.BindAsync(localEndpoint, token);
                 var i = 0;
                 await foreach (var message in messages.WithCancellation(token))
                 {
@@ -52,6 +53,9 @@ namespace ClusterPack.Tests.Transport
 
                     payload.Should().Be(expected[i]);
                     i++;
+                    
+                    if (i == expected.Length)
+                        break;
                 }
             }, token);
 
@@ -61,7 +65,7 @@ namespace ClusterPack.Tests.Transport
                 foreach (var message in expected)
                 {
                     var payload = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(message));
-                    await remote.SendAsync(localEndpoint, payload, token);
+                    await remote.SendAsync((IPEndPoint)local.LocalEndpoint, payload, token);
                 }
             }, token);
 

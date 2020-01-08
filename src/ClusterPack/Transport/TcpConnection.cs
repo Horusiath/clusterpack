@@ -92,7 +92,8 @@ namespace ClusterPack.Transport
             }
             else
             {
-                var remaining = BinaryPrimitives.ReadInt32BigEndian(readLength.Span);
+                var messageLength = BinaryPrimitives.ReadInt32BigEndian(readLength.Span);
+                var remaining = messageLength;
                 var ownedMemory = this.pool.Rent(remaining);
                 var buffer = ownedMemory.Memory.Length > remaining
                     ? ownedMemory.Memory.Slice(0, remaining)
@@ -103,7 +104,7 @@ namespace ClusterPack.Transport
                     read = await stream.ReadAsync(buffer, cancellationToken);
                     if (read > 0)
                     {
-                        buffer = buffer.Slice(0, read);
+                        buffer = buffer.Slice(read);
                         remaining -= read;  
                     }
                     // else if (remaining > 0)
@@ -115,7 +116,7 @@ namespace ClusterPack.Transport
                         break;
                     }
                 }
-                return new IncomingMessage(Endpoint, ownedMemory);
+                return new IncomingMessage(Endpoint, ownedMemory, messageLength);
             }
         }
 

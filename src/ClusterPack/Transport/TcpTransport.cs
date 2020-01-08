@@ -20,10 +20,10 @@ namespace ClusterPack.Transport
         private readonly TcpTransportOptions options;
         private readonly TaskFactory taskFactory;
         private readonly MemoryPool<byte> memoryPool;
-        private readonly Socket socket;
         private readonly Channel<IncomingMessage> incommingMessages;
         private readonly ConcurrentDictionary<IPEndPoint, TcpConnection> connections;
         
+        private Socket socket;
         private EndPoint? localEndpoint;
         private Task? acceptorLoop;
         private int isDisposed = 0;
@@ -39,7 +39,6 @@ namespace ClusterPack.Transport
             this.options = options;
             this.memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
             this.taskFactory = taskFactory ?? Task.Factory;
-            this.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             this.incommingMessages = Channel.CreateBounded<IncomingMessage>(options.IncomingMessageBufferSize);
             this.connections = new ConcurrentDictionary<IPEndPoint, TcpConnection>();
         }
@@ -65,6 +64,7 @@ namespace ClusterPack.Transport
             }
 
             await connection.SendAsync(payload, cancellationToken);
+            logger.LogDebug("sent payload of size {0}B to {1}", payload.Length, target);
         }
 
         /// <inheritdoc cref="ITransport"/>
@@ -73,11 +73,14 @@ namespace ClusterPack.Transport
             var previous = Interlocked.CompareExchange(ref localEndpoint, endpoint, null);
             if (previous is null)
             {
+                this.socket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 this.socket.Bind(endpoint);
+                this.socket.Listen(options.Backlog);
 
                 acceptorLoop = this.taskFactory.StartNew(AcceptConnections, cancellationToken);
-            
-                logger.LogInformation("listening on '{0}'", endpoint);
+
+                localEndpoint = this.socket.LocalEndPoint;
+                logger.LogInformation("listening on '{0}'", localEndpoint);
 
                 return MessageStream(cancellationToken);
             }
@@ -126,7 +129,7 @@ namespace ClusterPack.Transport
                 // we need to check again after lock was acquired
                 if (!connections.TryGetValue(target, out connection))
                 {
-                    var sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    var sock = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     await sock.ConnectAsync(target);
                     connection = new TcpConnection(sock, memoryPool, incommingMessages.Writer);
                     connections.TryAdd(target, connection);
@@ -148,7 +151,7 @@ namespace ClusterPack.Transport
         {
             while (!IsDisposed)
             {
-                var incoming = await this.socket.AcceptAsync();
+                var incoming = await this.socket.AcceptAsync().ConfigureAwait(false);
                 var connection = new TcpConnection(incoming, this.memoryPool, incommingMessages.Writer);
                 while (!this.connections.TryAdd(connection.Endpoint, connection))
                 {
@@ -170,8 +173,8 @@ namespace ClusterPack.Transport
                 await Task.WhenAll(connections.Values.Select(DisconnectAsync));
                 
                 acceptorLoop.Dispose();
-                socket.Dispose();
                 incommingMessages.Writer.Complete();
+                socket?.Dispose();
             }
         }
 
